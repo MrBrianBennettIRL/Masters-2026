@@ -332,7 +332,7 @@ function render(){
     html+=`<div>
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
-        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span>`:""}</span>
+        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span>`:p.botrEligible?`<span class="botr-score">(${p.botrScore}pts)</span>`:""}</span>
         <span class="score ${p.total>=100?"sc-orange":"sc-green"}">${p.total}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
