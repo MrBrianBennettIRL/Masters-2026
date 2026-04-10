@@ -158,11 +158,12 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        "https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=401811941"
-      );
-      if (!res.ok) throw new Error(`ESPN returned ${res.status}`);
-      const data = await res.json();
+      const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?event=401811941";
+      const PROXY = "https://api.allorigins.win/get?url=";
+      const res = await fetch(PROXY + encodeURIComponent(ESPN_URL));
+      if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
+      const wrapper = await res.json();
+      const data = JSON.parse(wrapper.contents);
 
       const competition = data.events?.[0]?.competitions?.[0];
       const competitors = competition?.competitors || [];
