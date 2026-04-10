@@ -206,29 +206,48 @@ async function fetchScores(){
     const res=await fetch("/api/scores");
     if(!res.ok)throw new Error("API returned "+res.status);
     const data=await res.json();
-    const competition=data.events?.[0]?.competitions?.[0];
-    const competitors=competition?.competitors||[];
-    if(!competitors.length)throw new Error("No data from ESPN");
-    const period=competition?.status?.period;
-    const badge=document.getElementById("round-badge");
-    if(period){badge.textContent="R"+period;badge.style.display="inline";}
+    if(data.error) throw new Error(data.error + (data.attempts ? " ("+data.attempts.join(", ")+")" : ""));
     const map={};
-    let assignedPos=1;
-    competitors.forEach((c,idx)=>{
-      const name=c.athlete?.displayName||"";
-      if(!name)return;
-      const st=(c.status?.type?.name||"").toUpperCase();
-      const isCut=st.includes("CUT")||st.includes("WITHDRAW")||st.includes("DISQUALIF");
-      let pos;
-      if(idx===0){pos=1;assignedPos=1;}
-      else{
-        const prev=competitors[idx-1]?.score;
-        const curr=c.score;
-        if(curr===prev&&!isCut){pos=assignedPos;}
-        else{assignedPos=idx+1;pos=assignedPos;}
-      }
-      map[norm(name)]=(isCut||pos>100)?MC:pos;
-    });
+
+    if(data.source==="masters" && data.data){
+      // Masters.com format
+      const players=data.data?.data?.leaderboard?.players||data.data?.players||[];
+      players.forEach((p,idx)=>{
+        const name=p.full_name||p.player_bio?.first_name+" "+p.player_bio?.last_name||"";
+        if(!name.trim())return;
+        const status=(p.status||"").toLowerCase();
+        const pos=parseInt(p.position)||idx+1;
+        const isCut=status.includes("cut")||status.includes("wd")||status.includes("withdraw");
+        map[norm(name)]=(isCut||pos>100)?MC:pos;
+      });
+      const badge=document.getElementById("round-badge");
+      const round=data.data?.data?.leaderboard?.current_round;
+      if(round){badge.textContent="R"+round;badge.style.display="inline";}
+    } else {
+      // ESPN format
+      const competition=data.events?.[0]?.competitions?.[0];
+      const competitors=competition?.competitors||[];
+      if(!competitors.length)throw new Error("No competitor data found");
+      const period=competition?.status?.period;
+      const badge=document.getElementById("round-badge");
+      if(period){badge.textContent="R"+period;badge.style.display="inline";}
+      let assignedPos=1;
+      competitors.forEach((c,idx)=>{
+        const name=c.athlete?.displayName||"";
+        if(!name)return;
+        const st=(c.status?.type?.name||"").toUpperCase();
+        const isCut=st.includes("CUT")||st.includes("WITHDRAW")||st.includes("DISQUALIF");
+        let pos;
+        if(idx===0){pos=1;assignedPos=1;}
+        else{
+          const prev=competitors[idx-1]?.score;
+          const curr=c.score;
+          if(curr===prev&&!isCut){pos=assignedPos;}
+          else{assignedPos=idx+1;pos=assignedPos;}
+        }
+        map[norm(name)]=(isCut||pos>100)?MC:pos;
+      });
+    }
     scores=map;
     lastUpdated=new Date();
     countdown=180;
