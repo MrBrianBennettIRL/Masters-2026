@@ -295,16 +295,15 @@ async function fetchScores(){
 function computeRankings(){
   const allRanked = PARTICIPANTS.map(p=>{
     const ps=p.picks.map(name=>({name,score:getScore(name)}));
-    const known=ps.filter(x=>x.score!==null);
-    const active=known.filter(x=>x.score!==MC);
-    const mcCount=known.filter(x=>x.score===MC).length;
-    const sorted=[...known].sort((a,b)=>a.score-b.score);
+    // All 7 picks always have a score (getScore returns MC=100 for unknowns)
+    const active=ps.filter(x=>x.score!==MC);
+    const sorted=[...ps].sort((a,b)=>a.score-b.score);
     const best5=sorted.slice(0,5);
     const best5names=best5.map(x=>norm(x.name));
-    const total=best5.length>=5?best5.reduce((s,x)=>s+x.score,0):null;
-    // BOTR: eligible if 3+ picks are MC, score = sum of all active picks
-    const botrEligible=mcCount>=3;
-    const botrScore=botrEligible&&active.length>0?active.reduce((s,x)=>s+x.score,0):null;
+    const total=best5.reduce((s,x)=>s+x.score,0);
+    // BOTR: exactly 3 MCs (4 active) - no more, no less
+    const botrEligible=active.length===4;
+    const botrScore=botrEligible?active.reduce((s,x)=>s+x.score,0):null;
     return{...p,ps,best5names,total,botrEligible,botrScore,active};
   });
   // Rank BOTR eligible by botrScore ascending
@@ -314,12 +313,8 @@ function computeRankings(){
     if(orig){orig.botrPos=i+1;orig.isBotrLeader=i===0;}
   });
   return allRanked.sort((a,b)=>{
-    if(a.total===null&&b.total===null)return 0;
-    if(a.total===null)return 1;
-    if(b.total===null)return -1;
     return a.total-b.total;
   }).map((p,i,arr)=>{
-    if(p.total===null)return{...p,pos:"—"};
     const first=arr.findIndex(x=>x.total===p.total);
     const tied=arr.filter(x=>x.total===p.total).length>1;
     return{...p,pos:tied?"T"+(first+1):""+(first+1)};
@@ -338,7 +333,7 @@ function render(){
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
         <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span>`:""}</span>
-        <span class="score ${p.total===null?"sc-muted":p.total>=100?"sc-orange":"sc-green"}">${p.total!==null?p.total:"—"}</span>
+        <span class="score ${p.total>=100?"sc-orange":"sc-green"}">${p.total}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
       <div class="picks ${isOpen?"open":""}">
@@ -351,7 +346,7 @@ function render(){
             <span class="pick-score ${scoreClass(ps.score)}">${fmt(ps.score)}</span>
           </div>`;
         }).join("")}
-        <div class="picks-total"><span>Best 5 total:</span><strong class="${p.total===null?"sc-muted":p.total>=100?"sc-orange":"sc-green"}">${p.total!==null?p.total:"—"}</strong></div>
+        <div class="picks-total"><span>Best 5 total:</span><strong class="${p.total>=100?"sc-orange":"sc-green"}">${p.total}</strong></div>
       </div>
     </div>`;
   });
