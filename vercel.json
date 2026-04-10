@@ -1,10 +1,10 @@
-Masters-2026/
-├── api/
-│   └── scores.js
-├── src/
-│   ├── App.jsx
-│   └── main.jsx
-├── index.html
-├── package.json
-├── vite.config.js
-└── vercel.json   ← NEW
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
