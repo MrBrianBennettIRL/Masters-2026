@@ -115,16 +115,16 @@ function norm(n) {
 function fmt(score) {
   if (score === MC) return "MC";
   if (score === null || score === undefined) return "—";
-  if (score === 0) return "E";
-  return score > 0 ? `+${score}` : `${score}`;
+  return `${score}`;
 }
 
 function scoreColor(score) {
   if (score === null || score === undefined) return "#6B9E7A";
   if (score === MC) return "#e05c5c";
-  if (score < 0) return "#4ade80";
-  if (score > 0) return "#f97316";
-  return "#F5F0E0";
+  if (score <= 5) return "#4ade80";
+  if (score <= 20) return "#a3e635";
+  if (score <= 50) return "#F5F0E0";
+  return "#f97316";
 }
 
 export default function App() {
@@ -166,33 +166,39 @@ export default function App() {
 
       const competition = data.events?.[0]?.competitions?.[0];
       const competitors = competition?.competitors || [];
-      if (!competitors.length) throw new Error("No competitors found in ESPN data");
+      if (!competitors.length) throw new Error("No competitors found");
 
       const period = competition?.status?.period;
       setRoundInfo(period ? `R${period}` : "");
 
       const map = {};
+      let assignedPos = 1;
+
       competitors.forEach((c, idx) => {
         const name = c.athlete?.displayName || "";
         if (!name) return;
+
         const statusName = (c.status?.type?.name || "").toUpperCase();
-        const scoreStr = c.score || "E";
-        const position = idx + 1; // ESPN sorts by leaderboard position
-
         const isCut = statusName.includes("CUT") || statusName.includes("WITHDRAW") || statusName.includes("DISQUALIF");
-        const outsideTop100 = position > 100;
 
-        let score;
-        if (isCut || outsideTop100) {
-          score = MC;
-        } else if (scoreStr === "E" || scoreStr === "--" || scoreStr === "") {
-          score = 0;
+        // Assign position with tie handling — ESPN returns competitors sorted by standing
+        let position;
+        if (idx === 0) {
+          position = 1;
+          assignedPos = 1;
         } else {
-          score = parseInt(scoreStr, 10);
-          if (isNaN(score)) score = 0;
+          const prevScore = competitors[idx - 1]?.score;
+          const currScore = c.score;
+          if (currScore === prevScore && !isCut) {
+            position = assignedPos; // tied — same position number
+          } else {
+            assignedPos = idx + 1;
+            position = assignedPos;
+          }
         }
 
-        map[norm(name)] = score;
+        // Cut, withdrawn, or outside top 100 = 100
+        map[norm(name)] = (isCut || position > 100) ? MC : position;
       });
 
       setScores(map);
@@ -280,7 +286,7 @@ export default function App() {
       {/* Rules bar */}
       <div style={{ background: "rgba(201,165,55,0.08)", borderBottom: "1px solid rgba(201,165,55,0.2)", padding: "8px 16px", textAlign: "center" }}>
         <span style={{ color: "#6B9E7A", fontSize: 11, letterSpacing: "0.06em" }}>
-          SCORING: Best 5 of 7 picks · Total to par · Missed cut = +100 · Lowest score wins · {PARTICIPANTS.length} entrants
+          SCORING: Best 5 of 7 picks · Leaderboard position (1st = 1pt) · Missed cut / Outside top 100 = 100pts · Lowest total wins · {PARTICIPANTS.length} entrants
         </span>
       </div>
 
