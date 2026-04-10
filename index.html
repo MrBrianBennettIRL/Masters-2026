@@ -57,6 +57,7 @@
   <div class="sub">Augusta National · April 9–12</div>
   <div class="meta">
     <span id="round-badge"></span>
+    <span id="cut-line" style="display:none;background:rgba(224,92,92,0.15);color:#e05c5c;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.06em"></span>
     <span id="last-updated"></span>
     <button id="refresh-btn" onclick="fetchScores()">↻ REFRESH</button>
   </div>
@@ -218,7 +219,7 @@ async function fetchScores(){
         const status=(p.status||"").toLowerCase();
         const pos=parseInt(p.position)||idx+1;
         const isCut=status.includes("cut")||status.includes("wd")||status.includes("withdraw");
-        map[norm(name)]=(isCut||pos>100)?MC:pos;
+        map[norm(name)]=isCut?MC:pos;
       });
       const badge=document.getElementById("round-badge");
       const round=data.data?.data?.leaderboard?.current_round;
@@ -231,21 +232,45 @@ async function fetchScores(){
       const period=competition?.status?.period;
       const badge=document.getElementById("round-badge");
       if(period){badge.textContent="R"+period;badge.style.display="inline";}
+      // Build position map with tie handling
       let assignedPos=1;
+      const playerData=[];
       competitors.forEach((c,idx)=>{
         const name=c.athlete?.displayName||"";
         if(!name)return;
         const st=(c.status?.type?.name||"").toUpperCase();
-        const isCut=st.includes("CUT")||st.includes("WITHDRAW")||st.includes("DISQUALIF");
+        const isWD=st.includes("WITHDRAW")||st.includes("DISQUALIF");
+        const isMC=st.includes("CUT");
         let pos;
         if(idx===0){pos=1;assignedPos=1;}
         else{
           const prev=competitors[idx-1]?.score;
           const curr=c.score;
-          if(curr===prev&&!isCut){pos=assignedPos;}
+          if(curr===prev&&!isWD&&!isMC){pos=assignedPos;}
           else{assignedPos=idx+1;pos=assignedPos;}
         }
-        map[norm(name)]=(isCut||pos>100)?MC:pos;
+        playerData.push({name,pos,isWD,isMC,score:c.score});
+      });
+
+      // Find the cut line: score to par of the player at position 50
+      // Anyone with a WORSE score than position 50 is projected to miss cut
+      // Ties with position 50 all make the cut
+      const p50=playerData.filter(p=>!p.isWD&&!p.isMC&&p.pos<=50);
+      const cutScoreStr=p50.length>0?p50[p50.length-1].score:null;
+      const cutScorePar=cutScoreStr?(cutScoreStr==="E"?0:parseInt(cutScoreStr)):null;
+
+      // Show cut line on page
+      const cutEl=document.getElementById("cut-line");
+      if(cutEl&&cutScorePar!==null){
+        const cd=cutScorePar===0?"E":cutScorePar>0?"+"+cutScorePar:""+cutScorePar;
+        cutEl.textContent="✂ Projected cut: "+cd;
+        cutEl.style.display="inline";
+      }
+
+      playerData.forEach(({name,pos,isWD,isMC,score})=>{
+        const scorePar=score?(score==="E"?0:parseInt(score)):0;
+        const aboveCut=cutScorePar!==null&&scorePar>cutScorePar;
+        map[norm(name)]=(isWD||isMC||aboveCut)?MC:pos;
       });
     }
     scores=map;
@@ -271,7 +296,7 @@ function computeRankings(){
     const sorted=[...known].sort((a,b)=>a.score-b.score);
     const best5=sorted.slice(0,5);
     const best5names=best5.map(x=>norm(x.name));
-    const total=known.length>=5?best5.reduce((s,x)=>s+x.score,0):null;
+    const total=best5.length>=5?best5.reduce((s,x)=>s+x.score,0):null;
     return{...p,ps,best5names,total};
   }).sort((a,b)=>{
     if(a.total===null&&b.total===null)return 0;
