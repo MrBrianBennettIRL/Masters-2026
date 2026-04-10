@@ -196,7 +196,7 @@ let scores={}, loading=false, lastUpdated=null, countdown=180, expandedId=null;
 
 function getScore(name){
   const k=norm(name);
-  return scores[k]!==undefined?scores[k]:null;
+  return scores[k]!==undefined?scores[k]:MC;
 }
 
 async function fetchScores(){
