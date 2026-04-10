@@ -1,0 +1,10 @@
+Masters-2026/
+├── api/
+│   └── scores.js
+├── src/
+│   ├── App.jsx
+│   └── main.jsx
+├── index.html
+├── package.json
+├── vite.config.js
+└── vercel.json   ← NEW
