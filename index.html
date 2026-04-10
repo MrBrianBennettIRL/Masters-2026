@@ -52,6 +52,11 @@
     .botr-badge{display:inline-block;background:#7C3AED;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.08em;margin-left:6px;vertical-align:middle}
     .botr-leader{background:linear-gradient(90deg,#7C3AED,#A855F7);box-shadow:0 0 8px rgba(124,58,237,0.5)}
     .botr-score{color:#A855F7;font-size:10px;margin-left:4px;font-weight:500}
+    .prize{font-size:10px;font-weight:700;margin-left:6px;padding:2px 7px;border-radius:3px;vertical-align:middle}
+    .prize-1{background:#C9A537;color:#0D2B1B}
+    .prize-2{background:#A8A8A8;color:#0D2B1B}
+    .prize-3{background:#CD7F32;color:#fff}
+    .prize-botr{background:#7C3AED;color:#fff}
   </style>
 </head>
 <body>
@@ -332,7 +337,7 @@ function render(){
     html+=`<div>
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
-        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span>`:p.botrEligible?`<span class="botr-score">(${p.botrScore}pts)</span>`:""}</span>
+        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span><span class="prize prize-botr">$600</span>`:p.botrEligible?`<span class="botr-score">(${p.botrScore}pts)</span>`:""} ${(()=>{const PRIZES=[5000,2800,1600];const firstIdx=ranked.findIndex(x=>x.total===p.total);if(firstIdx>2)return"";const tieCount=ranked.filter(x=>x.total===p.total).length;const lastIdx=Math.min(firstIdx+tieCount-1,2);const slice=PRIZES.slice(firstIdx,lastIdx+1);const share=Math.round(slice.reduce((a,b)=>a+b,0)/tieCount);const fmt=share>=1000?"$"+(share%1000===0?(share/1000)+"k":share):"$"+share;const cls=firstIdx===0?"prize-1":firstIdx===1?"prize-2":"prize-3";return`<span class="prize ${cls}">${fmt}</span>`;})()}</span>
         <span class="score ${p.total>=100?"sc-orange":"sc-green"}">${p.total}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
