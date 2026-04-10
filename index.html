@@ -337,8 +337,8 @@ function render(){
     html+=`<div>
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
-        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore}pts)</span>`:""}</span>
-        <span class="score ${scoreClass(p.total)}">${fmt(p.total)}</span>
+        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span>`:""}</span>
+        <span class="score ${p.total===null?"sc-muted":p.total>=100?"sc-orange":"sc-green"}">${p.total!==null?p.total:"—"}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
       <div class="picks ${isOpen?"open":""}">
@@ -351,7 +351,7 @@ function render(){
             <span class="pick-score ${scoreClass(ps.score)}">${fmt(ps.score)}</span>
           </div>`;
         }).join("")}
-        <div class="picks-total"><span>Best 5 total:</span><strong class="${scoreClass(p.total)}">${fmt(p.total)}</strong></div>
+        <div class="picks-total"><span>Best 5 total:</span><strong class="${p.total===null?"sc-muted":p.total>=100?"sc-orange":"sc-green"}">${p.total!==null?p.total:"—"}</strong></div>
       </div>
     </div>`;
   });
