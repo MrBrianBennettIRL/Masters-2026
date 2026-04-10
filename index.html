@@ -49,6 +49,9 @@
     .picks-total strong{font-size:16px;font-weight:700}
     footer{text-align:center;padding:16px 24px 32px;color:#2D5E3A;font-size:10px;letter-spacing:.06em}
     .sc-green{color:#4ade80}.sc-lime{color:#a3e635}.sc-white{color:#F5F0E0}.sc-orange{color:#f97316}.sc-red{color:#e05c5c}.sc-muted{color:#6B9E7A}
+    .botr-badge{display:inline-block;background:#7C3AED;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.08em;margin-left:6px;vertical-align:middle}
+    .botr-leader{background:linear-gradient(90deg,#7C3AED,#A855F7);box-shadow:0 0 8px rgba(124,58,237,0.5)}
+    .botr-score{color:#A855F7;font-size:10px;margin-left:4px;font-weight:500}
   </style>
 </head>
 <body>
@@ -290,15 +293,27 @@ async function fetchScores(){
 }
 
 function computeRankings(){
-  return PARTICIPANTS.map(p=>{
+  const allRanked = PARTICIPANTS.map(p=>{
     const ps=p.picks.map(name=>({name,score:getScore(name)}));
     const known=ps.filter(x=>x.score!==null);
+    const active=known.filter(x=>x.score!==MC);
+    const mcCount=known.filter(x=>x.score===MC).length;
     const sorted=[...known].sort((a,b)=>a.score-b.score);
     const best5=sorted.slice(0,5);
     const best5names=best5.map(x=>norm(x.name));
     const total=best5.length>=5?best5.reduce((s,x)=>s+x.score,0):null;
-    return{...p,ps,best5names,total};
-  }).sort((a,b)=>{
+    // BOTR: eligible if 3+ picks are MC, score = sum of all active picks
+    const botrEligible=mcCount>=3;
+    const botrScore=botrEligible&&active.length>0?active.reduce((s,x)=>s+x.score,0):null;
+    return{...p,ps,best5names,total,botrEligible,botrScore,active};
+  });
+  // Rank BOTR eligible by botrScore ascending
+  const botrRanked=[...allRanked].filter(p=>p.botrEligible&&p.botrScore!==null).sort((a,b)=>a.botrScore-b.botrScore);
+  botrRanked.forEach((p,i)=>{
+    const orig=allRanked.find(x=>x.id===p.id);
+    if(orig){orig.botrPos=i+1;orig.isBotrLeader=i===0;}
+  });
+  return allRanked.sort((a,b)=>{
     if(a.total===null&&b.total===null)return 0;
     if(a.total===null)return 1;
     if(b.total===null)return -1;
@@ -322,7 +337,7 @@ function render(){
     html+=`<div>
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
-        <span class="name">${p.name}</span>
+        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore}pts)</span>`:""}</span>
         <span class="score ${scoreClass(p.total)}">${fmt(p.total)}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
