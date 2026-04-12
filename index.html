@@ -260,26 +260,34 @@ async function fetchScores(){
         playerData.push({name,pos,isWD,isMC,score:c.score});
       });
 
-      // Find the cut line: score to par of the player at position 50
-      // Anyone with a WORSE score than position 50 is projected to miss cut
-      // Ties with position 50 all make the cut
-      const p50=playerData.filter(p=>!p.isWD&&!p.isMC&&p.pos<=50);
-      const cutScoreStr=p50.length>0?p50[p50.length-1].score:null;
-      const cutScorePar=cutScoreStr?(cutScoreStr==="E"?0:parseInt(cutScoreStr)):null;
-
-      // Show cut line on page
       const cutEl=document.getElementById("cut-line");
-      if(cutEl&&cutScorePar!==null){
-        const cd=cutScorePar===0?"E":cutScorePar>0?"+"+cutScorePar:""+cutScorePar;
-        cutEl.textContent="✂ Projected cut: "+cd;
-        cutEl.style.display="inline";
-      }
+      const roundNum=parseInt(period)||0;
 
-      playerData.forEach(({name,pos,isWD,isMC,score})=>{
-        const scorePar=score?(score==="E"?0:parseInt(score)):0;
-        const aboveCut=cutScorePar!==null&&scorePar>cutScorePar;
-        map[norm(name)]=(isWD||isMC||aboveCut)?MC:pos;
-      });
+      if(roundNum<=2){
+        // R1/R2: use projected cut (score worse than P50)
+        const p50=playerData.filter(p=>!p.isWD&&!p.isMC&&p.pos<=50);
+        const cutScoreStr=p50.length>0?p50[p50.length-1].score:null;
+        const cutScorePar=cutScoreStr?(cutScoreStr==="E"?0:parseInt(cutScoreStr)):null;
+        if(cutEl&&cutScorePar!==null){
+          const cd=cutScorePar===0?"E":cutScorePar>0?"+"+cutScorePar:""+cutScorePar;
+          cutEl.textContent="✂ Projected cut: "+cd;
+          cutEl.style.display="inline";
+        }
+        playerData.forEach(({name,pos,isWD,isMC,score})=>{
+          const scorePar=score?(score==="E"?0:parseInt(score)):0;
+          const aboveCut=cutScorePar!==null&&scorePar>cutScorePar;
+          map[norm(name)]=(isWD||isMC||aboveCut)?MC:pos;
+        });
+      } else {
+        // R3/R4: cut is official — trust ESPN status only
+        if(cutEl){
+          cutEl.textContent="✂ Cut made";
+          cutEl.style.display="inline";
+        }
+        playerData.forEach(({name,pos,isWD,isMC})=>{
+          map[norm(name)]=(isWD||isMC)?MC:pos;
+        });
+      }
     }
     scores=map;
     lastUpdated=new Date();
