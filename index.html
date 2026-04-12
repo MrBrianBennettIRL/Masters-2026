@@ -179,12 +179,14 @@ const PARTICIPANTS=[
   [100,"Will 'Boris' Buck",["Justin Rose","Hideki Matsuyama","Jon Rahm","Shane Lowry","Corey Conners","Adam Scott","Brooks Koepka"]],
 ].map(([id,name,picks])=>({id,name,picks}));
 
+const CUT_PLAYERS=new Set(["harry hall","ryan fox","danny willett","bubba watson","j.j. spaun","nicolai hojgaard","bryson dechambeau","zach johnson","akshay bhatia","robert macintyre","rasmus neergaard-petersen","andrew novak","tom mckibbin","cameron smith","casey jarvis","daniel berger","jackson herrington","michael kim","ethan fang","fred couples","mason howell","jose maria olazabal","mike weir","vijay singh","fifa laopakdee","carlos ortiz","sami valimaki","min woo lee","johnny keefer","max greyserman","nico echavarria","naoyuki kataoka","aldrich potgieter","mateo pulcini","brandon holtz","angel cabrera","davis riley"]);
+
 function norm(n){return n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z\s.]/g,"").replace(/\s+/g," ").trim();}
 function fmt(s){if(s===MC)return"MC";if(s===null||s===undefined)return"—";return""+s;}
 function scoreClass(s){if(s===null||s===undefined)return"sc-muted";if(s===MC)return"sc-red";if(s<=5)return"sc-green";if(s<=20)return"sc-lime";if(s<=50)return"sc-white";return"sc-orange";}
 
 let scores={},loading=false,lastUpdated=null,countdown=180,expandedId=null;
-function getScore(name){const k=norm(name);return scores[k]!==undefined?scores[k]:MC;}
+function getScore(name){const k=norm(name);if(CUT_PLAYERS.has(k))return MC;return scores[k]!==undefined?scores[k]:MC;}
 
 async function fetchScores(){
   if(loading)return;
