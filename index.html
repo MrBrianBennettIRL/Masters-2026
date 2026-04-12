@@ -13,6 +13,7 @@
     #header .sub{color:#C9A537;font-family:'Playfair Display',serif;font-style:italic;font-size:14px;margin-bottom:14px;letter-spacing:.08em}
     #header .meta{display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap}
     #round-badge{background:#C9A537;color:#0D2B1B;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.1em;display:none}
+    #cut-line{display:none;background:rgba(224,92,92,0.15);color:#e05c5c;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.06em}
     #last-updated{color:#6B9E7A;font-size:11px}
     #refresh-btn{background:#C9A537;color:#0D2B1B;border:none;padding:6px 16px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.08em;font-family:'JetBrains Mono',monospace}
     #refresh-btn:disabled{background:#1C4A2E;color:#6B9E7A;cursor:wait}
@@ -50,7 +51,6 @@
     footer{text-align:center;padding:16px 24px 32px;color:#2D5E3A;font-size:10px;letter-spacing:.06em}
     .sc-green{color:#4ade80}.sc-lime{color:#a3e635}.sc-white{color:#F5F0E0}.sc-orange{color:#f97316}.sc-red{color:#e05c5c}.sc-muted{color:#6B9E7A}
     .botr-badge{display:inline-block;background:#7C3AED;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.08em;margin-left:6px;vertical-align:middle}
-    .botr-leader{background:linear-gradient(90deg,#7C3AED,#A855F7);box-shadow:0 0 8px rgba(124,58,237,0.5)}
     .botr-score{color:#A855F7;font-size:10px;margin-left:4px;font-weight:500}
     .prize{font-size:10px;font-weight:700;margin-left:6px;padding:2px 7px;border-radius:3px;vertical-align:middle}
     .prize-1{background:#C9A537;color:#0D2B1B}
@@ -65,20 +65,19 @@
   <div class="sub">Augusta National · April 9–12</div>
   <div class="meta">
     <span id="round-badge"></span>
-    <span id="cut-line" style="display:none;background:rgba(224,92,92,0.15);color:#e05c5c;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.06em"></span>
+    <span id="cut-line"></span>
     <span id="last-updated"></span>
     <button id="refresh-btn" onclick="fetchScores()">↻ REFRESH</button>
   </div>
   <div id="error-msg"></div>
 </div>
-<div id="rules">SCORING: Best 5 of 7 picks · Leaderboard position (1st = 1pt) · Missed cut / Outside top 100 = 100pts · Lowest total wins</div>
+<div id="rules">SCORING: Best 5 of 7 picks · Leaderboard position (1st = 1pt) · Missed cut = 100pts · Lowest total wins</div>
 <div id="loading"><div class="lt">Loading live scores...</div><div class="ls">Connecting to Masters leaderboard</div></div>
 <div id="board"></div>
 <footer>M7 GOLF · 2026 MASTERS SWEEPSTAKE · AUGUSTA NATIONAL</footer>
-
 <script>
-const MC = 100;
-const PARTICIPANTS = [
+const MC=100;
+const PARTICIPANTS=[
   [1,"Adam 'Pirate' Shapiro",["Xander Schauffele","Justin Thomas","Bryson DeChambeau","Patrick Cantlay","Brian Harman","Jordan Spieth","Brooks Koepka"]],
   [2,"Alastair 'Baloney' Loney",["Matt Fitzpatrick","Ludvig Aberg","Jon Rahm","Nicolai Hojgaard","Jake Knapp","Jordan Spieth","Brooks Koepka"]],
   [3,"Alex 'Dravid' Wall",["Scottie Scheffler","Bryson DeChambeau","Jon Rahm","Nicolai Hojgaard","Jake Knapp","Adam Scott","Haotong Li"]],
@@ -180,29 +179,13 @@ const PARTICIPANTS = [
   [100,"Will 'Boris' Buck",["Justin Rose","Hideki Matsuyama","Jon Rahm","Shane Lowry","Corey Conners","Adam Scott","Brooks Koepka"]],
 ].map(([id,name,picks])=>({id,name,picks}));
 
-function norm(n){
-  return n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z\s.]/g,"").replace(/\s+/g," ").trim();
-}
-function fmt(s){
-  if(s===MC)return"MC";
-  if(s===null||s===undefined)return"—";
-  return""+s;
-}
-function scoreClass(s){
-  if(s===null||s===undefined)return"sc-muted";
-  if(s===MC)return"sc-red";
-  if(s<=5)return"sc-green";
-  if(s<=20)return"sc-lime";
-  if(s<=50)return"sc-white";
-  return"sc-orange";
-}
+function norm(n){return n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z\s.]/g,"").replace(/\s+/g," ").trim();}
+function fmt(s){if(s===MC)return"MC";if(s===null||s===undefined)return"—";return""+s;}
+function scoreClass(s){if(s===null||s===undefined)return"sc-muted";if(s===MC)return"sc-red";if(s<=5)return"sc-green";if(s<=20)return"sc-lime";if(s<=50)return"sc-white";return"sc-orange";}
 
-let scores={}, loading=false, lastUpdated=null, countdown=180, expandedId=null;
+let scores={},loading=false,lastUpdated=null,countdown=180,expandedId=null;
 
-function getScore(name){
-  const k=norm(name);
-  return scores[k]!==undefined?scores[k]:MC;
-}
+function getScore(name){const k=norm(name);return scores[k]!==undefined?scores[k]:MC;}
 
 async function fetchScores(){
   if(loading)return;
@@ -215,87 +198,61 @@ async function fetchScores(){
     const res=await fetch("/api/scores");
     if(!res.ok)throw new Error("API returned "+res.status);
     const data=await res.json();
-    if(data.error) throw new Error(data.error + (data.attempts ? " ("+data.attempts.join(", ")+")" : ""));
+    if(data.error)throw new Error(data.error);
     const map={};
+    const competition=data.events?.[0]?.competitions?.[0];
+    const competitors=competition?.competitors||[];
+    if(!competitors.length)throw new Error("No competitor data found");
+    const period=parseInt(competition?.status?.period)||0;
+    const badge=document.getElementById("round-badge");
+    if(period){badge.textContent="R"+period;badge.style.display="inline";}
+    const cutEl=document.getElementById("cut-line");
 
-    if(data.source==="masters" && data.data){
-      // Masters.com format
-      const players=data.data?.data?.leaderboard?.players||data.data?.players||[];
-      players.forEach((p,idx)=>{
-        const name=p.full_name||p.player_bio?.first_name+" "+p.player_bio?.last_name||"";
-        if(!name.trim())return;
-        const status=(p.status||"").toLowerCase();
-        const pos=parseInt(p.position)||idx+1;
-        const isCut=status.includes("cut")||status.includes("wd")||status.includes("withdraw");
-        map[norm(name)]=isCut?MC:pos;
+    if(period>=3){
+      // R3/R4: official cut — trust ESPN status
+      if(cutEl){cutEl.textContent="✂ Cut made";cutEl.style.display="inline";}
+      let assignedPos=1;
+      competitors.forEach((c,idx)=>{
+        const name=c.athlete?.displayName||"";
+        if(!name)return;
+        const st=[c.status?.type?.name||"",c.status?.type?.description||"",c.status?.displayValue||""].join(" ").toUpperCase();
+        const isMC=st.includes("CUT")||st.includes("MDF");
+        const isWD=st.includes("WITHDRAW")||st.includes("WD")||st.includes("DISQUALIF");
+        if(isMC||isWD){map[norm(name)]=MC;return;}
+        let pos;
+        if(idx===0){pos=1;assignedPos=1;}
+        else{
+          if(competitors[idx-1]?.score===c.score){pos=assignedPos;}
+          else{assignedPos=idx+1;pos=assignedPos;}
+        }
+        map[norm(name)]=pos>100?MC:pos;
       });
-      const badge=document.getElementById("round-badge");
-      const round=data.data?.data?.leaderboard?.current_round;
-      if(round){badge.textContent="R"+round;badge.style.display="inline";}
     } else {
-      // ESPN format
-      const competition=data.events?.[0]?.competitions?.[0];
-      const competitors=competition?.competitors||[];
-      if(!competitors.length)throw new Error("No competitor data found");
-      const period=competition?.status?.period;
-      const badge=document.getElementById("round-badge");
-      if(period){badge.textContent="R"+period;badge.style.display="inline";}
-      // Build position map with tie handling
+      // R1/R2: projected cut
       let assignedPos=1;
       const playerData=[];
       competitors.forEach((c,idx)=>{
         const name=c.athlete?.displayName||"";
         if(!name)return;
-        const st=(c.status?.type?.name||"").toUpperCase();
-        // Check ALL possible ESPN status fields for cut/wd
-        const allStatus=[
-          c.status?.type?.name||"",
-          c.status?.type?.description||"",
-          c.status?.type?.shortDetail||"",
-          c.status?.type?.detail||"",
-          c.status?.displayValue||""
-        ].join(" ").toUpperCase();
-        const isWD=allStatus.includes("WITHDRAW")||allStatus.includes("WD")||allStatus.includes("DISQUALIF");
-        const isMC=allStatus.includes("CUT")||allStatus.includes("MDF")||allStatus.includes("DQ");
+        const st=[c.status?.type?.name||"",c.status?.type?.description||""].join(" ").toUpperCase();
+        const isWD=st.includes("WITHDRAW")||st.includes("DISQUALIF");
+        const isMC=st.includes("CUT");
         let pos;
         if(idx===0){pos=1;assignedPos=1;}
         else{
-          const prev=competitors[idx-1]?.score;
-          const curr=c.score;
-          if(curr===prev&&!isWD&&!isMC){pos=assignedPos;}
+          if(competitors[idx-1]?.score===c.score&&!isWD&&!isMC){pos=assignedPos;}
           else{assignedPos=idx+1;pos=assignedPos;}
         }
         playerData.push({name,pos,isWD,isMC,score:c.score});
       });
-
-      const cutEl=document.getElementById("cut-line");
-      const roundNum=parseInt(period)||0;
-
-      if(roundNum<=2){
-        // R1/R2: use projected cut (score worse than P50)
-        const p50=playerData.filter(p=>!p.isWD&&!p.isMC&&p.pos<=50);
-        const cutScoreStr=p50.length>0?p50[p50.length-1].score:null;
-        const cutScorePar=cutScoreStr?(cutScoreStr==="E"?0:parseInt(cutScoreStr)):null;
-        if(cutEl&&cutScorePar!==null){
-          const cd=cutScorePar===0?"E":cutScorePar>0?"+"+cutScorePar:""+cutScorePar;
-          cutEl.textContent="✂ Projected cut: "+cd;
-          cutEl.style.display="inline";
-        }
-        playerData.forEach(({name,pos,isWD,isMC,score})=>{
-          const scorePar=score?(score==="E"?0:parseInt(score)):0;
-          const aboveCut=cutScorePar!==null&&scorePar>cutScorePar;
-          map[norm(name)]=(isWD||isMC||aboveCut)?MC:pos;
-        });
-      } else {
-        // R3/R4: cut is official — trust ESPN status only
-        if(cutEl){
-          cutEl.textContent="✂ Cut made";
-          cutEl.style.display="inline";
-        }
-        playerData.forEach(({name,pos,isWD,isMC})=>{
-          map[norm(name)]=(isWD||isMC)?MC:pos;
-        });
-      }
+      const p50=playerData.filter(p=>!p.isWD&&!p.isMC&&p.pos<=50);
+      const cutStr=p50.length>0?p50[p50.length-1].score:null;
+      const cutPar=cutStr?(cutStr==="E"?0:parseInt(cutStr)):null;
+      if(cutEl&&cutPar!==null){cutEl.textContent="✂ Projected cut: "+(cutPar===0?"E":cutPar>0?"+"+cutPar:""+cutPar);cutEl.style.display="inline";}
+      playerData.forEach(({name,pos,isWD,isMC,score})=>{
+        const sp=score?(score==="E"?0:parseInt(score)):0;
+        map[norm(name)]=(isWD||isMC||(cutPar!==null&&sp>cutPar))?MC:pos;
+      });
     }
     scores=map;
     lastUpdated=new Date();
@@ -314,28 +271,20 @@ async function fetchScores(){
 }
 
 function computeRankings(){
-  const allRanked = PARTICIPANTS.map(p=>{
+  const allRanked=PARTICIPANTS.map(p=>{
     const ps=p.picks.map(name=>({name,score:getScore(name)}));
-    // All 7 picks always have a score (getScore returns MC=100 for unknowns)
     const active=ps.filter(x=>x.score!==MC);
     const sorted=[...ps].sort((a,b)=>a.score-b.score);
     const best5=sorted.slice(0,5);
     const best5names=best5.map(x=>norm(x.name));
     const total=best5.reduce((s,x)=>s+x.score,0);
-    // BOTR: 4 or fewer active picks (3+ MCs), must have at least 1 active
-    const botrEligible=active.length<=4&&active.length>=1;
+    const botrEligible=active.length===4;
     const botrScore=botrEligible?active.reduce((s,x)=>s+x.score,0):null;
-    return{...p,ps,best5names,total,botrEligible,botrScore,active};
+    return{...p,ps,best5names,total,botrEligible,botrScore};
   });
-  // Rank BOTR eligible by botrScore ascending
   const botrRanked=[...allRanked].filter(p=>p.botrEligible&&p.botrScore!==null).sort((a,b)=>a.botrScore-b.botrScore);
-  botrRanked.forEach((p,i)=>{
-    const orig=allRanked.find(x=>x.id===p.id);
-    if(orig){orig.botrPos=i+1;orig.isBotrLeader=i===0;}
-  });
-  return allRanked.sort((a,b)=>{
-    return a.total-b.total;
-  }).map((p,i,arr)=>{
+  botrRanked.forEach((p,i)=>{const orig=allRanked.find(x=>x.id===p.id);if(orig){orig.isBotrLeader=i===0;}});
+  return allRanked.sort((a,b)=>a.total-b.total).map((p,i,arr)=>{
     const first=arr.findIndex(x=>x.total===p.total);
     const tied=arr.filter(x=>x.total===p.total).length>1;
     return{...p,pos:tied?"T"+(first+1):""+(first+1)};
@@ -346,14 +295,30 @@ function render(){
   const ranked=computeRankings();
   const board=document.getElementById("board");
   if(!board)return;
+  const PRIZES=[5000,2800,1600];
   let html=`<div class="col-headers"><span>POS</span><span>ENTRANT</span><span class="right">SCORE</span><span></span></div>`;
   ranked.forEach((p,idx)=>{
     const isOpen=expandedId===p.id;
     const topClass=idx===0?"top1":idx===1?"top2":idx===2?"top3":idx%2===0?"even":"";
+    // Prize calculation with tie splitting
+    const firstIdx=ranked.findIndex(x=>x.total===p.total);
+    const tieCount=ranked.filter(x=>x.total===p.total).length;
+    let prizeHtml="";
+    if(firstIdx<=2){
+      const lastIdx=Math.min(firstIdx+tieCount-1,2);
+      const slice=PRIZES.slice(firstIdx,lastIdx+1);
+      const share=Math.round(slice.reduce((a,b)=>a+b,0)/tieCount);
+      const fmtPrize=share>=1000?"$"+(share%1000===0?(share/1000)+"k":share):"$"+share;
+      const cls=firstIdx===0?"prize-1":firstIdx===1?"prize-2":"prize-3";
+      prizeHtml=`<span class="prize ${cls}">${fmtPrize}</span>`;
+    }
+    const botrHtml=p.isBotrLeader
+      ?`<span class="botr-badge">⭐ BOTR</span><span class="botr-score">(${p.botrScore}pts)</span><span class="prize prize-botr">$600</span>`
+      :p.botrEligible?`<span class="botr-score">(${p.botrScore}pts)</span>`:"";
     html+=`<div>
       <div class="row ${topClass}" onclick="toggle(${p.id})">
         <span class="pos">${p.pos}</span>
-        <span class="name">${p.name}${p.isBotrLeader?`<span class="botr-badge botr-leader">⭐ BOTR</span><span class="botr-score">(${p.botrScore!==null?p.botrScore:"—"}pts)</span><span class="prize prize-botr">$600</span>`:p.botrEligible?`<span class="botr-score">(${p.botrScore}pts)</span>`:""} ${(()=>{const PRIZES=[5000,2800,1600];const firstIdx=ranked.findIndex(x=>x.total===p.total);if(firstIdx>2)return"";const tieCount=ranked.filter(x=>x.total===p.total).length;const lastIdx=Math.min(firstIdx+tieCount-1,2);const slice=PRIZES.slice(firstIdx,lastIdx+1);const share=Math.round(slice.reduce((a,b)=>a+b,0)/tieCount);const fmt=share>=1000?"$"+(share%1000===0?(share/1000)+"k":share):"$"+share;const cls=firstIdx===0?"prize-1":firstIdx===1?"prize-2":"prize-3";return`<span class="prize ${cls}">${fmt}</span>`;})()}</span>
+        <span class="name">${p.name}${botrHtml}${prizeHtml}</span>
         <span class="score ${p.total>=100?"sc-orange":"sc-green"}">${p.total}</span>
         <span class="toggle">${isOpen?"▲":"▼"}</span>
       </div>
@@ -374,12 +339,8 @@ function render(){
   board.innerHTML=html;
 }
 
-function toggle(id){
-  expandedId=expandedId===id?null:id;
-  render();
-}
+function toggle(id){expandedId=expandedId===id?null:id;render();}
 
-// Countdown ticker
 setInterval(()=>{
   if(countdown>0){
     countdown--;
@@ -392,10 +353,7 @@ setInterval(()=>{
   }
 },1000);
 
-// Auto-refresh every 3 minutes
-setInterval(fetchScores, 3*60*1000);
-
-// Initial load
+setInterval(fetchScores,3*60*1000);
 fetchScores();
 </script>
 </body>
