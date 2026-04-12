@@ -184,7 +184,6 @@ function fmt(s){if(s===MC)return"MC";if(s===null||s===undefined)return"—";retu
 function scoreClass(s){if(s===null||s===undefined)return"sc-muted";if(s===MC)return"sc-red";if(s<=5)return"sc-green";if(s<=20)return"sc-lime";if(s<=50)return"sc-white";return"sc-orange";}
 
 let scores={},loading=false,lastUpdated=null,countdown=180,expandedId=null;
-
 function getScore(name){const k=norm(name);return scores[k]!==undefined?scores[k]:MC;}
 
 async function fetchScores(){
@@ -209,16 +208,20 @@ async function fetchScores(){
     const cutEl=document.getElementById("cut-line");
 
     if(period>=3){
-      // R3/R4: official cut — trust ESPN status
+      // R3/R4: anyone with fewer than 3 rounds of scores missed the cut
       if(cutEl){cutEl.textContent="✂ Cut made";cutEl.style.display="inline";}
       let assignedPos=1;
       competitors.forEach((c,idx)=>{
         const name=c.athlete?.displayName||"";
         if(!name)return;
+        // Check status strings
         const st=[c.status?.type?.name||"",c.status?.type?.description||"",c.status?.displayValue||""].join(" ").toUpperCase();
-        const isMC=st.includes("CUT")||st.includes("MDF");
-        const isWD=st.includes("WITHDRAW")||st.includes("WD")||st.includes("DISQUALIF");
-        if(isMC||isWD){map[norm(name)]=MC;return;}
+        const statusMC=st.includes("CUT")||st.includes("MDF");
+        const statusWD=st.includes("WITHDRAW")||st.includes("WD")||st.includes("DISQUALIF");
+        // Also check round count - CUT players only have 2 rounds
+        const roundCount=(c.linescores||[]).filter(r=>r.value!==undefined&&r.value!=="").length;
+        const tooFewRounds=period>=3&&roundCount<3;
+        if(statusMC||statusWD||tooFewRounds){map[norm(name)]=MC;return;}
         let pos;
         if(idx===0){pos=1;assignedPos=1;}
         else{
@@ -228,7 +231,7 @@ async function fetchScores(){
         map[norm(name)]=pos>100?MC:pos;
       });
     } else {
-      // R1/R2: projected cut
+      // R1/R2: projected cut based on top 50
       let assignedPos=1;
       const playerData=[];
       competitors.forEach((c,idx)=>{
@@ -283,7 +286,7 @@ function computeRankings(){
     return{...p,ps,best5names,total,botrEligible,botrScore};
   });
   const botrRanked=[...allRanked].filter(p=>p.botrEligible&&p.botrScore!==null).sort((a,b)=>a.botrScore-b.botrScore);
-  botrRanked.forEach((p,i)=>{const orig=allRanked.find(x=>x.id===p.id);if(orig){orig.isBotrLeader=i===0;}});
+  botrRanked.forEach((p,i)=>{const orig=allRanked.find(x=>x.id===p.id);if(orig)orig.isBotrLeader=i===0;});
   return allRanked.sort((a,b)=>a.total-b.total).map((p,i,arr)=>{
     const first=arr.findIndex(x=>x.total===p.total);
     const tied=arr.filter(x=>x.total===p.total).length>1;
@@ -300,7 +303,6 @@ function render(){
   ranked.forEach((p,idx)=>{
     const isOpen=expandedId===p.id;
     const topClass=idx===0?"top1":idx===1?"top2":idx===2?"top3":idx%2===0?"even":"";
-    // Prize calculation with tie splitting
     const firstIdx=ranked.findIndex(x=>x.total===p.total);
     const tieCount=ranked.filter(x=>x.total===p.total).length;
     let prizeHtml="";
@@ -308,9 +310,9 @@ function render(){
       const lastIdx=Math.min(firstIdx+tieCount-1,2);
       const slice=PRIZES.slice(firstIdx,lastIdx+1);
       const share=Math.round(slice.reduce((a,b)=>a+b,0)/tieCount);
-      const fmtPrize=share>=1000?"$"+(share%1000===0?(share/1000)+"k":share):"$"+share;
+      const fmtP=share>=1000?"$"+(share%1000===0?(share/1000)+"k":share):"$"+share;
       const cls=firstIdx===0?"prize-1":firstIdx===1?"prize-2":"prize-3";
-      prizeHtml=`<span class="prize ${cls}">${fmtPrize}</span>`;
+      prizeHtml=`<span class="prize ${cls}">${fmtP}</span>`;
     }
     const botrHtml=p.isBotrLeader
       ?`<span class="botr-badge">⭐ BOTR</span><span class="botr-score">(${p.botrScore}pts)</span><span class="prize prize-botr">$600</span>`
@@ -340,19 +342,11 @@ function render(){
 }
 
 function toggle(id){expandedId=expandedId===id?null:id;render();}
-
 setInterval(()=>{
-  if(countdown>0){
-    countdown--;
-    const el=document.getElementById("last-updated");
-    if(lastUpdated&&el){
-      const m=Math.floor(countdown/60);
-      const s=String(countdown%60).padStart(2,"0");
-      el.textContent="Updated "+lastUpdated.toLocaleTimeString()+" · next in "+m+":"+s;
-    }
-  }
+  if(countdown>0){countdown--;const el=document.getElementById("last-updated");
+  if(lastUpdated&&el){const m=Math.floor(countdown/60);const s=String(countdown%60).padStart(2,"0");
+  el.textContent="Updated "+lastUpdated.toLocaleTimeString()+" · next in "+m+":"+s;}}
 },1000);
-
 setInterval(fetchScores,3*60*1000);
 fetchScores();
 </script>
